@@ -103,6 +103,33 @@ def compare_period(period_days: int = 30, column: str = "kwh") -> dict:
     }
 
 
+def trend_forecast(column: str = "kwh", days: int = 7, window: int = 7) -> dict:
+    """用最近 window 天的移动平均 + 线性斜率，外推未来 days 天的分区域用电。"""
+    df = _load()
+    if column not in df.columns:
+        return {"error": f"列 {column} 不存在"}
+    window = max(int(window), 2)
+    days = max(int(days), 1)
+    out = {}
+    for zone, g in df.groupby("zone"):
+        s = pd.to_numeric(g[column], errors="coerce").dropna().tail(window)
+        if s.empty:
+            continue
+        recent = float(s.mean())
+        if len(s) >= 3:
+            slope = float(np.polyfit(np.arange(len(s)), s.to_numpy(), 1)[0])
+        else:
+            slope = 0.0
+        out[zone] = {
+            "recent_mean": round(recent, 2),
+            "daily_slope": round(slope, 2),
+            "forecast_next_days": [round(recent + slope * (i + 1), 2) for i in range(days)],
+        }
+    if not out:
+        return {"error": "数据不足，无法预测"}
+    return {"column": column, "window_days": window, "forecast_days": days, "by_zone": out}
+
+
 TOOL_SCHEMAS = [
     {
         "type": "function",
@@ -147,10 +174,26 @@ TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "trend_forecast",
+            "description": "用最近 window 天的移动平均加线性斜率，外推未来 days 天各区域的用电量。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "column": {"type": "string", "description": "列名，默认 kwh"},
+                    "days": {"type": "integer", "description": "预测未来多少天，默认 7"},
+                    "window": {"type": "integer", "description": "用最近多少天做基准，默认 7"},
+                },
+            },
+        },
+    },
 ]
 
 TOOL_FUNCS = {
     "describe_stats": describe_stats,
     "detect_outliers": detect_outliers,
     "compare_period": compare_period,
+    "trend_forecast": trend_forecast,
 }
