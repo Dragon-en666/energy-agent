@@ -40,13 +40,14 @@ python -m src.main --out report.md
 > 更像计量故障或抄表失败。机房 C 均值 133.21 kWh，占三个区域总均值的 53%，
 > 节能优先投到机房 C。
 
-## 三个工具
+## 四个工具
 
 | 工具 | 作用 | 关键参数 |
 | --- | --- | --- |
 | `describe_stats` | 数据画像：样本量、时间范围、均值/中位数/极值、分区域均值 | `column` |
 | `detect_outliers` | z 分数抓异常，**默认在区域内部算 z** | `column`, `z=2.5`, `limit`, `per_zone` |
 | `compare_period` | 最近 N 天 vs 前 N 天的环比 | `period_days=30`, `column` |
+| `trend_forecast` | 最近 window 天均值 + 线性斜率，外推未来 days 天 | `column`, `days=7`, `window=7` |
 
 > `per_zone=True` 的重要性：不同区域用电基准差 3 倍（宿舍 ~42 / 机房 ~150），
 > 全局算 z 会把机房的高值误判成异常、也会把宿舍的低值掩盖掉。
@@ -78,7 +79,7 @@ src/main.py    argparse CLI
 
 ## 下一步
 
-- [ ] 第 4 个工具 `trend_forecast`（移动平均 / 线性拟合）
+- [x] 第 4 个工具 `trend_forecast`（移动平均 + 线性斜率）
 - [ ] pytest：正常、缺列、空数据、极端值
 - [ ] Streamlit 单页：上传 CSV → 提问 → 看轨迹
 - [ ] 对比实验：z=2.5 vs 3.0、per_zone 开 vs 关
